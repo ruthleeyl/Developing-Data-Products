@@ -1,0 +1,107 @@
+---
+title: "BMI Health App Presentation"
+author: "Ruth Lee"
+date: "April 1, 2018"
+output: ioslides_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Heath Indicator using Body Mass Index (BMI)
+
+**Body Mass Index (BMI)** is a simple health indicator using the height and weight of a person. The formula is BMI = a person's weight (kg) divided by the square of his height (m).
+
+This simple app calculates your BMI and the amount of weight to gain (if you are underweight) or to lose (if you are overweight or obese).
+        
+Note that BMI is not appropriate for use as a health indicator for pregnant women, the elderly, young children and muscle-builders.
+
+## App Features
+
+- Computes your BMI
+- Tells you whether you have a normal body weight
+- Computes your ideal weight based on your height
+- Computes the amount of weight to gain or lose to reach normal body weight (ideal weight) range
+- Shows where your weight is vis-a-vis the ideal weight
+
+
+## R Code for the User Interface at ui.R
+
+
+```{r code1, echo=TRUE,results='hide',message=FALSE}
+library(shiny)
+shinyUI(fluidPage(
+sidebarPanel(
+sliderInput('wt','Enter Your Weight (kg)',value=50,min= 20, max=200, step=0.05),
+sliderInput('ht','Enter Your Height (cm)',value=150,min= 40, max=300, step=0.05),
+submitButton("Submit")),
+mainPanel(
+  h2('Documentation on the Use of this App'), ## Details not displayed
+  h2('Your BMI'), verbatimTextOutput("bmi"), verbatimTextOutput("text"),
+  h2('Your Ideal Weight based on Your Height'),
+  h5('Minimum (kg)'), verbatimTextOutput('idealmin'),
+  h5('Maximum (kg)'), verbatimTextOutput('idealmax'),
+  plotOutput("plot1"))))
+
+```
+
+## Output: Comparison Chart   
+Pseudo Inputs: Weight = 40kg, Height = 160cm
+
+```{r pseudo,echo=FALSE,comment="",fig.height = 4}
+##pseudo weight and height figures
+wt=40
+ht=160
+wtmin<-18.5*(ht/100)^2-wt
+    wtmax<-24.9*(ht/100)^2-wt
+    bmi<-wt/(ht/100)^2
+    sprintf("Your BMI is %.2f.You are underweight.",bmi)
+    sprintf("Please gain %.2f to %.2f kg to reach a normal body weight.", wtmin, wtmax)
+    
+    counts<-c(wt,18.5*(ht/100)^2, 24.9*(ht/100)^2)
+    x = c("Your Weight", "Ideal Weight (Min)", "Ideal Weight (Max)")
+   barplot(counts,horiz = FALSE,names.arg = x,col = c("red","blue","blue"),main="Your Weight vs Ideal Weight based on Your Height")
+   abline(h=wt,col="red",lwd=2,lty=2)
+```
+
+
+```{r code, echo = FALSE}
+library(shiny)
+BMI<- function(wt,ht) wt/(ht/100)^2
+
+shinyServer(function(input, output) {
+  output$bmi<- renderPrint({BMI(input$wt,input$ht)})
+  tt <- reactive({
+  if(BMI(input$wt,input$ht)<18.5){
+    wtmin<-18.5*(input$ht/100)^2-input$wt
+    wtmax<-24.9*(input$ht/100)^2-input$wt
+    text<-sprintf("You are underweight. Please gain %.2f to %.2f kg to reach a normal body weight.", wtmin, wtmax)
+    }else if(BMI(input$wt,input$ht)<25) {
+      text<-"You have a normal body weight. Continue to maintain this weight."
+    }else if(BMI(input$wt,input$ht)<30){
+      wtmin<-input$wt-18.5*(input$ht/100)^2
+      wtmax<-input$wt-24.9*(input$ht/100)^2
+      text<-sprintf("You are overweight. Please try to lose %.2f to %.2f kg to reach a normal body weight.", wtmax,wtmin)
+    }else if(BMI(input$wt,input$ht)>30){
+      wtmin<-input$wt- 18.5*(input$ht/100)^2
+      wtmax<-input$wt- 24.9*(input$ht/100)^2
+      text<-sprintf("You are obese. You should try to lose %.2f to %.2f kg to reach a normal body weight.", wtmax,wtmin)}
+      })
+    observe({
+    input$wt
+    input$ht})
+  
+  output$text<-renderText(tt())
+    output$idealmin<-renderText({
+    18.5*(input$ht/100)^2})
+     
+  output$idealmax<-renderText({
+    24.8*(input$ht/100)^2})
+  output$plot1 <- renderPlot({
+    counts<-c(input$wt,18.5*(input$ht/100)^2, 24.9*(input$ht/100)^2)
+    x = c("Your Weight", "Ideal Weight (Min)", "Ideal Weight (Max)")
+   barplot(counts,horiz = FALSE,names.arg = x,col = c("red","blue","blue"),main="Your Weight vs Ideal Weight based on Your Height")
+   abline(h=input$wt,col="red",lwd=2,lty=2)  })
+  })
+```
